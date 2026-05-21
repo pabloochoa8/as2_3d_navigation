@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>as2_3d_map_interface</name>
+  <version>0.1.0</version>
+  <description>Header-only interface defining the contract between the 3D volumetric map and the path planner for Aerostack2.</description>
+  <maintainer email="p.ochoaizaguirre@alumnos.upm.es">Pablo Ochoa Izaguirre</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <author email="p.ochoaizaguirre@alumnos.upm.es">Pablo Ochoa Izaguirre</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_srvs</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

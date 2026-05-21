@@ -1,0 +1,8 @@
+<class_libraries>
+    <library path="as2_3d_path_planner_plugin">
+        <class type="as2_3d_path_planner::Plugin"
+               base_class_type="as2_behaviors_path_planning::PluginBase">
+            <description>3D path planner plugin for Aerostack2 (JPS3D + EGO-Planner + Minimum-Snap).</description>
+        </class>
+    </library>
+</class_libraries>
