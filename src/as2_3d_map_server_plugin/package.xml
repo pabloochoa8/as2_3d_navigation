@@ -3,15 +3,31 @@
 <package format="3">
   <name>as2_3d_map_server_plugin</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>OctoMap-backed 3D map server plugin for Aerostack2.</description>
   <maintainer email="p.ochoaizaguirre@alumnos.upm.es">pabloochoa</maintainer>
-  <license>TODO: License declaration</license>
+  <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>eigen3_cmake_module</buildtool_depend>
 
   <depend>rclcpp</depend>
   <depend>pluginlib</depend>
   <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>as2_core</depend>
+  <depend>as2_msgs</depend>
+  <depend>as2_behavior</depend>
+  <depend>as2_behaviors_path_planning</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_eigen</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>octomap</depend>
+  <depend>octomap_ros</depend>
+  <depend>octomap_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>as2_3d_map_interface</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

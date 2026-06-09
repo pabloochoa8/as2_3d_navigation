@@ -1,0 +1,27 @@
+# Parameters for as2_3d_path_planner_plugin loaded inside PathPlannerBehavior.
+# Node name in AS2: path_planner.
+
+/*/path_planner:
+  ros__parameters:
+    # OctoMap to load at startup (binary .bt format).
+    map_file: "/home/pabloochoa/Desktop/TFM/arena_map.bt"
+
+    # Planner selection
+    planner.use_jps3d: true       # true = JPS3D primary + A* fallback; false = A* only
+
+    # JPS3D tuning
+    jps.inflation_radius: 0.10    # safety margin around obstacles [m]
+    jps.map_update_rate:  1       # rebuild collision map every N plan() calls
+
+    # Minimum-Snap trajectory smoothing
+    snap.enabled:    true
+    snap.total_time: 10.0   # desired total duration [s]
+    snap.sample_dt:  0.05   # sampling step [s]
+    snap.max_vel:    1.5    # [m/s]
+    snap.max_acc:    2.0    # [m/s²]
+
+    # A* tuning (used as fallback when JPS3D is enabled, primary when disabled)
+    astar.max_iterations: 500000
+    astar.inflation_radius: 0.10
+    astar.allow_diagonal: true
+    astar.w_heuristic: 1.0

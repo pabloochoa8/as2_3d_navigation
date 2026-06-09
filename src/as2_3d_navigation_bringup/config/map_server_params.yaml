@@ -1,0 +1,11 @@
+# Parameters for as2_3d_map_server_plugin loaded inside PathPlannerBehavior.
+# The node name matches the AS2 behavior that loads the plugin.
+
+/*/path_planner:
+  ros__parameters:
+    pointcloud_topic: "/drone0/sensor_measurements/front_camera/points"
+    map_frame: "earth"
+    resolution: 0.05
+    map_file: "/home/pabloochoa/Desktop/TFM/arena_map.bt"
+    map_save_path: "/home/pabloochoa/Desktop/TFM/arena_map.bt"
+    pose_topic: "/drone0/self_localization/pose"

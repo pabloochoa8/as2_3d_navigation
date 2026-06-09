@@ -27,36 +27,42 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 /**
- * @file as2_3d_path_planner_plugin.hpp
- * @brief Path planner plugin for Aerostack2: JPS3D global planner with
- *        automatic A* fallback.
+ * @file as2_3d_map_server_plugin.hpp
+ * @brief Map server plugin: subscribes to a PointCloud2, transforms points to
+ *        the map frame via TF, feeds an OctomapMap, and exposes occupancy
+ *        queries through the as2_behaviors_path_planning::PluginBase interface.
  *
  * @author Pablo Ochoa Izaguirre <p.ochoaizaguirre@alumnos.upm.es>
  */
 
-#ifndef AS2_3D_PATH_PLANNER_PLUGIN__AS2_3D_PATH_PLANNER_PLUGIN_HPP_
-#define AS2_3D_PATH_PLANNER_PLUGIN__AS2_3D_PATH_PLANNER_PLUGIN_HPP_
+#ifndef AS2_3D_MAP_SERVER_PLUGIN__AS2_3D_MAP_SERVER_PLUGIN_HPP_
+#define AS2_3D_MAP_SERVER_PLUGIN__AS2_3D_MAP_SERVER_PLUGIN_HPP_
 
 #include <memory>
-#include <vector>
+#include <string>
 
 #include <as2_behaviors_path_planning/path_planner_plugin_base.hpp>
-#include <as2_3d_map_interface/map_interface.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 
-#include "astar3d.hpp"
-#include "jps3d_planner.hpp"
-#include "minimum_snap.hpp"
+#include <std_srvs/srv/trigger.hpp>
+#include <octomap_msgs/msg/octomap.hpp>
+#include <octomap_msgs/conversions.h>
 
+#include "as2_3d_map_server_plugin/octomap_3d.hpp"
+#include "as2_3d_map_server_plugin/local_grid.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "as2_msgs/action/navigate_to_point.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
 
-namespace as2_3d_path_planner
+namespace as2_3d_map_server
 {
 
 class Plugin : public as2_behaviors_path_planning::PluginBase
 {
 public:
+  // ----- PluginBase lifecycle -----
   void initialize(
     as2::Node * node_ptr,
     std::shared_ptr<tf2_ros::Buffer> tf_buffer) override;
@@ -72,24 +78,33 @@ public:
   void on_execution_end() override;
   as2_behavior::ExecutionStatus on_run() override;
 
+  // ----- Map query (public for path planner integration) -----
   bool is_occupied(const geometry_msgs::msg::PointStamped & point);
-  bool is_path_traversable(const std::vector<geometry_msgs::msg::PointStamped> & path);
 
 private:
-  std::shared_ptr<as2_3d_map_interface::MapInterface> map_interface_;
+  void pointcloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 
-  Astar3D::Params     astar_params_;
-  Jps3DPlanner::Params jps_params_;
+  std::shared_ptr<OctomapMap> octomap_map_;
+  std::shared_ptr<LocalGrid> local_grid_;
 
-  std::unique_ptr<Astar3D>      astar_;
-  std::unique_ptr<Jps3DPlanner> jps_;
-  std::unique_ptr<MinimumSnap>  snap_;
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pc_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
+  // tf_buffer_ is inherited from PluginBase; we replace it with a fresh one
+  // that has its own listener so the map server controls its own TF context.
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
-  bool use_jps3d_{true};
-  bool snap_enabled_{true};
-  MinimumSnap::Params snap_params_;
+  std::string pointcloud_topic_;
+  std::string pose_topic_;
+  std::string map_frame_;
+  std::string map_save_path_;
+  double resolution_{0.05};
+
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr save_map_srv_;
+  rclcpp::Publisher<octomap_msgs::msg::Octomap>::SharedPtr octomap_pub_;
+  rclcpp::TimerBase::SharedPtr octomap_pub_timer_;
+  rclcpp::TimerBase::SharedPtr diagnostic_timer_;
 };
 
-}  // namespace as2_3d_path_planner
+}  // namespace as2_3d_map_server
 
-#endif  // AS2_3D_PATH_PLANNER_PLUGIN__AS2_3D_PATH_PLANNER_PLUGIN_HPP_
+#endif  // AS2_3D_MAP_SERVER_PLUGIN__AS2_3D_MAP_SERVER_PLUGIN_HPP_
