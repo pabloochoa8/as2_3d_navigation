@@ -6,6 +6,9 @@
     pointcloud_topic: "/drone0/sensor_measurements/front_camera/points"
     map_frame: "earth"
     resolution: 0.05
-    map_file: "/home/pabloochoa/Desktop/TFM/arena_map.bt"
-    map_save_path: "/home/pabloochoa/Desktop/TFM/arena_map.bt"
+    sensor_model/hit: 0.501
+    sensor_model/miss: 0.499
+    occupancy_min_z: 0.2
+    map_file: "/home/pabloochoa/Desktop/TFM/map/arena_map_BUENA2.bt"
+    map_save_path: "/home/pabloochoa/Desktop/TFM/map/arena_map_BUENA2.bt"
     pose_topic: "/drone0/self_localization/pose"

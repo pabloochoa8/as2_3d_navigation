@@ -154,12 +154,15 @@ void Plugin::initialize(
   node_ptr_->declare_parameter("snap.sample_dt",  0.05);
   node_ptr_->declare_parameter("snap.max_vel",    1.5);
   node_ptr_->declare_parameter("snap.max_acc",    2.0);
+  node_ptr_->declare_parameter("snap.chunk_size", 8);
 
   snap_enabled_                = node_ptr_->get_parameter("snap.enabled").as_bool();
   snap_params_.total_time      = node_ptr_->get_parameter("snap.total_time").as_double();
   snap_params_.sample_dt       = node_ptr_->get_parameter("snap.sample_dt").as_double();
   snap_params_.max_vel         = node_ptr_->get_parameter("snap.max_vel").as_double();
   snap_params_.max_acc         = node_ptr_->get_parameter("snap.max_acc").as_double();
+  snap_chunk_size_             = static_cast<int>(
+    node_ptr_->get_parameter("snap.chunk_size").as_int());
 
   if (snap_enabled_) {
     snap_ = std::make_unique<MinimumSnap>(snap_params_);
@@ -213,9 +216,10 @@ void Plugin::initialize(
   }
 
   RCLCPP_INFO(node_ptr_->get_logger(),
-    "[path_planner] initialised | jps=%s | snap=%s | inflation=%.2f m",
+    "[path_planner] initialised | jps=%s | snap=%s | chunk=%d | inflation=%.2f m",
     use_jps3d_ ? "on" : "off",
     snap_enabled_ ? "on" : "off",
+    snap_chunk_size_,
     astar_params_.inflation_radius);
 }
 
@@ -294,41 +298,73 @@ bool Plugin::on_activate(
     "[path_planner] %s: %zu discrete waypoints", planner_used.c_str(), waypoints.size());
 
   // -------------------------------------------------------------------------
-  // Step 2: Minimum-Snap trajectory generation
+  // Step 2: Chunked Minimum-Snap + per-chunk collision check
   // -------------------------------------------------------------------------
-  std::vector<Eigen::Vector3d> final_pts;  // what we eventually put in path_
+  std::vector<Eigen::Vector3d> final_pts;
 
   if (snap_enabled_ && snap_ && waypoints.size() >= 2) {
-    const auto sampled = snap_->generate(waypoints);
+    const int n_wp = static_cast<int>(waypoints.size());
+    bool first_chunk = true;
+    int chunk_idx = 0;
+    int smooth_chunks = 0;
+    int discrete_chunks = 0;
 
-    if (sampled.size() < 2) {
-      RCLCPP_WARN(node_ptr_->get_logger(),
-        "[path_planner] Minimum-Snap returned empty trajectory — using discrete waypoints");
-      final_pts = waypoints;
-    } else {
-      // -----------------------------------------------------------------------
-      // Step 3: Collision check on the smooth trajectory
-      // -----------------------------------------------------------------------
-      int unsafe_idx = -1;
-      const bool safe = trajectoryIsSafe(
-        sampled, map_interface_,
-        astar_params_.inflation_radius,   // reuse A* inflation
-        unsafe_idx);
+    for (int chunk_start = 0; chunk_start < n_wp - 1; ) {
+      const int chunk_end = std::min(chunk_start + snap_chunk_size_ - 1, n_wp - 1);
 
-      if (safe) {
-        RCLCPP_INFO(node_ptr_->get_logger(),
-          "[path_planner] Smooth trajectory: %zu samples, %.1f s — SAFE",
-          sampled.size(), snap_->totalTime());
-        final_pts = sampled;
+      const std::vector<Eigen::Vector3d> chunk_wps(
+        waypoints.cbegin() + chunk_start,
+        waypoints.cbegin() + chunk_end + 1);
+
+      bool use_discrete = false;
+
+      if (chunk_wps.size() >= 2) {
+        const auto sampled = snap_->generate(chunk_wps);
+
+        if (sampled.size() < 2) {
+          use_discrete = true;
+        } else {
+          int unsafe_idx = -1;
+          const bool safe = trajectoryIsSafe(
+            sampled, map_interface_,
+            astar_params_.inflation_radius,
+            unsafe_idx);
+
+          if (safe) {
+            const size_t skip = first_chunk ? 0u : 1u;
+            for (size_t i = skip; i < sampled.size(); ++i) {
+              final_pts.push_back(sampled[i]);
+            }
+            ++smooth_chunks;
+          } else {
+            RCLCPP_WARN(node_ptr_->get_logger(),
+              "[path_planner] chunk %d UNSAFE at sample %d (%.2f, %.2f, %.2f) "
+              "— using discrete waypoints for this chunk",
+              chunk_idx, unsafe_idx,
+              sampled[unsafe_idx].x(), sampled[unsafe_idx].y(), sampled[unsafe_idx].z());
+            use_discrete = true;
+          }
+        }
       } else {
-        RCLCPP_WARN(node_ptr_->get_logger(),
-          "[path_planner] Smooth trajectory UNSAFE at sample %d (%.2f, %.2f, %.2f) "
-          "— falling back to discrete waypoints",
-          unsafe_idx,
-          sampled[unsafe_idx].x(), sampled[unsafe_idx].y(), sampled[unsafe_idx].z());
-        final_pts = waypoints;
+        use_discrete = true;
       }
+
+      if (use_discrete) {
+        const size_t skip = first_chunk ? 0u : 1u;
+        for (size_t i = skip; i < chunk_wps.size(); ++i) {
+          final_pts.push_back(chunk_wps[i]);
+        }
+        ++discrete_chunks;
+      }
+
+      first_chunk = false;
+      ++chunk_idx;
+      chunk_start = chunk_end;
     }
+
+    RCLCPP_INFO(node_ptr_->get_logger(),
+      "[path_planner] Minimum-Snap: %d chunks | smooth=%d discrete=%d | %zu samples total",
+      chunk_idx, smooth_chunks, discrete_chunks, final_pts.size());
   } else {
     final_pts = waypoints;
   }
@@ -347,9 +383,8 @@ bool Plugin::on_activate(
   }
 
   RCLCPP_INFO(node_ptr_->get_logger(),
-    "[path_planner] path_ filled with %zu points (%s)",
-    path_.size(),
-    (final_pts.size() == waypoints.size()) ? "discrete" : "smooth");
+    "[path_planner] path_ filled with %zu points",
+    path_.size());
   return true;
 }
 

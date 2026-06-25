@@ -87,6 +87,7 @@ private:
 
   bool use_jps3d_{true};
   bool snap_enabled_{true};
+  int  snap_chunk_size_{8};
   MinimumSnap::Params snap_params_;
 };
 
