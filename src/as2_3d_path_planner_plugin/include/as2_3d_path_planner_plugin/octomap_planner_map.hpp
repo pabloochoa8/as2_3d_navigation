@@ -61,7 +61,7 @@ class OctomapPlannerMap : public as2_3d_map_interface::MapInterface
 {
 public:
   // Padding added to the OcToMap metric bounds on each side [m].
-  static constexpr double kBoundsPadding = 3.2;
+  static constexpr double kBoundsPadding = 1.0;
 
   // Voxels at z < kFloorClearance are returned as UNKNOWN, not OCCUPIED.
   // This prevents the mapped floor plane (z≈0) from blocking the inflation

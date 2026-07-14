@@ -11,7 +11,7 @@
 
     # JPS3D tuning
     jps.inflation_radius: 0.50    # safety margin around obstacles [m]
-    jps.map_update_rate:  1       # rebuild collision map every N plan() calls
+    jps.map_update_rate:  0       # rebuild collision map every N plan() calls
 
     # Minimum-Snap trajectory smoothing
     snap.enabled:    true

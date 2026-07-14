@@ -28,7 +28,9 @@
 
 #include "jps3d_planner.hpp"
 
+#include <chrono>
 #include <cmath>
+#include <cstdio>
 
 // JPS3D headers (vendored under thirdparty/jps3d/)
 #include <jps_basis/data_type.h>
@@ -36,6 +38,11 @@
 #include <jps_planner/jps_planner/jps_planner.h>
 
 using VoxelMapUtil = JPS::MapUtil<3>;
+using Clock = std::chrono::steady_clock;
+static double ms_since(const Clock::time_point & t0)
+{
+  return std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
+}
 
 // ---------------------------------------------------------------------------
 // Construction / destruction
@@ -70,13 +77,16 @@ std::vector<Eigen::Vector3d> Jps3DPlanner::plan(
   const Eigen::Vector3d & start,
   const Eigen::Vector3d & goal)
 {
+  const auto t_total0 = Clock::now();
   last_result_ = Result::NO_PATH;
 
   // Conditional map rebuild (rate == 0 → never rebuild after first build).
   ++call_count_;
+  const auto t_rebuild0 = Clock::now();
   if (params_.map_update_rate > 0 && (call_count_ % params_.map_update_rate) == 0) {
     buildMap();
   }
+  const double ms_rebuild_check = ms_since(t_rebuild0);
 
   const auto & b = map_->getBounds();
 
@@ -96,6 +106,7 @@ std::vector<Eigen::Vector3d> Jps3DPlanner::plan(
   const Vec3f g(goal.x(),  goal.y(),  goal.z());
 
   // --- occupancy checks (after dilation) ---
+  const auto t_occ0 = Clock::now();
   const Vec3i si = map_util_->floatToInt(s);
   const Vec3i gi = map_util_->floatToInt(g);
 
@@ -107,10 +118,20 @@ std::vector<Eigen::Vector3d> Jps3DPlanner::plan(
     last_result_ = Result::GOAL_OCCUPIED;
     return {};
   }
+  const double ms_occ = ms_since(t_occ0);
 
   // --- plan ---
   // eps=1 (admissible), use_jps=true (JPS mode; false would fall back to A*)
+  const auto t_jps0 = Clock::now();
   const bool ok = planner_->plan(s, g, 1.0, true);
+  const double ms_jps_plan = ms_since(t_jps0);
+
+  const double ms_total = ms_since(t_total0);
+  std::printf(
+    "[jps3d_planner] plan() timing: total=%.2f ms | rebuild_check=%.2f ms | "
+    "floatToInt+isFree=%.2f ms | planner_->plan()=%.2f ms | call_count=%d\n",
+    ms_total, ms_rebuild_check, ms_occ, ms_jps_plan, call_count_);
+  std::fflush(stdout);
 
   if (!ok || planner_->status() != 0) {
     last_result_ = Result::NO_PATH;
@@ -135,6 +156,12 @@ std::vector<Eigen::Vector3d> Jps3DPlanner::plan(
 
 void Jps3DPlanner::buildMap()
 {
+  const auto t_build0 = Clock::now();
+  std::printf(
+    "[jps3d_planner] buildMap() EXECUTING | call_count=%d | map_update_rate=%d\n",
+    call_count_, params_.map_update_rate);
+  std::fflush(stdout);
+
   const auto & b = map_->getBounds();
 
   // Grid origin placed 0.5*res before the first valid cell so that
@@ -195,4 +222,9 @@ void Jps3DPlanner::buildMap()
   planner_->setMapUtil(map_util_);
   planner_->updateMap();
   map_built_ = true;
+
+  std::printf(
+    "[jps3d_planner] buildMap() DONE in %.2f ms | grid=%dx%dx%d (%d cells)\n",
+    ms_since(t_build0), nx, ny, nz, nx * ny * nz);
+  std::fflush(stdout);
 }

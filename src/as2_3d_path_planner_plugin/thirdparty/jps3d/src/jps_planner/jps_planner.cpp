@@ -158,6 +158,12 @@ void JPSPlanner<Dim>::updateMap() {
         for( int x = 0; x < dim(0); ++x)
           cmap_[x+y*dim(0)] = map_util_->isOccupied(Veci<Dim>(x,y)) ? 1:0;
   }
+
+  // cmap_ may have been reallocated (different pointer/size) and/or the grid
+  // dimensions may have changed. graph_search_ (if any) holds a raw pointer
+  // into the OLD cmap_ buffer and was sized for the OLD dimensions, so it is
+  // no longer valid — drop it and let plan() build a fresh one on next call.
+  graph_search_.reset();
 }
 
 template <int Dim>
@@ -206,12 +212,25 @@ bool JPSPlanner<Dim>::plan(const Vecf<Dim> &start, const Vecf<Dim> &goal, decima
 
   const Veci<Dim> dim = map_util_->getDim();
 
+  // Reuse graph_search_ across calls when the collision map hasn't changed
+  // (updateMap() resets it to nullptr whenever cmap_/dim actually change).
+  // Reconstructing it every call was the dominant cost: its ctor allocates
+  // and zero-initialises hm_/seen_ sized to the FULL grid (millions of
+  // cells), independent of path complexity.
   if(Dim == 3) {
-    graph_search_ = std::make_shared<JPS::GraphSearch>(cmap_.data(), dim(0), dim(1), dim(2), eps, planner_verbose_);
+    if (!graph_search_) {
+      graph_search_ = std::make_shared<JPS::GraphSearch>(cmap_.data(), dim(0), dim(1), dim(2), eps, planner_verbose_);
+    } else {
+      graph_search_->setEps(eps);
+    }
     graph_search_->plan(start_int(0), start_int(1), start_int(2), goal_int(0), goal_int(1), goal_int(2), use_jps);
   }
   else {
-    graph_search_ = std::make_shared<JPS::GraphSearch>(cmap_.data(), dim(0), dim(1), eps, planner_verbose_);
+    if (!graph_search_) {
+      graph_search_ = std::make_shared<JPS::GraphSearch>(cmap_.data(), dim(0), dim(1), eps, planner_verbose_);
+    } else {
+      graph_search_->setEps(eps);
+    }
     graph_search_->plan(start_int(0), start_int(1), goal_int(0),  goal_int(1), use_jps);
   }
 

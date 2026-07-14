@@ -1,4 +1,5 @@
 #include <jps_planner/jps_planner/graph_search.h>
+#include <algorithm>
 #include <cmath>
 
 using namespace JPS;
@@ -79,8 +80,13 @@ bool GraphSearch::plan(int xStart, int yStart, int xGoal, int yGoal, bool useJps
   use_2d_ = true;
   pq_.clear();
   path_.clear();
-  hm_.resize(xDim_ * yDim_);
-  seen_.resize(xDim_ * yDim_, false);
+  // hm_/seen_ are sized once (constructor) and reused across calls when this
+  // GraphSearch instance is kept alive between plan() invocations (same
+  // cmap_). resize() to an already-matching size is a no-op, so it would
+  // leave stale State g/opened/closed/parentId and seen_ flags from the
+  // previous search — explicitly clear instead.
+  std::fill(hm_.begin(), hm_.end(), nullptr);
+  std::fill(seen_.begin(), seen_.end(), false);
   // Set jps
   use_jps_ = useJps;
 
@@ -102,8 +108,9 @@ bool GraphSearch::plan(int xStart, int yStart, int  zStart, int xGoal, int yGoal
   use_2d_ = false;
   pq_.clear();
   path_.clear();
-  hm_.resize(xDim_ * yDim_ * zDim_);
-  seen_.resize(xDim_ * yDim_ * zDim_, false);
+  // See comment in the 2D overload above: explicit clear, not resize().
+  std::fill(hm_.begin(), hm_.end(), nullptr);
+  std::fill(seen_.begin(), seen_.end(), false);
 
   // Set jps
   use_jps_ = useJps;

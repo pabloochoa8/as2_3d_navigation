@@ -165,6 +165,13 @@ namespace JPS
       GraphSearch(const char* cMap, int xDim, int yDim, int zDim, double eps = 1, bool verbose = false);
 
       /**
+       * @brief Update the heuristic weight used by subsequent plan() calls.
+       *        Needed when the same GraphSearch instance is reused across
+       *        calls (eps_ would otherwise stay frozen at construction time).
+       */
+      void setEps(double eps) {eps_ = eps;}
+
+      /**
        * @brief start 2D planning thread
        *
        * @param xStart start x coordinate
