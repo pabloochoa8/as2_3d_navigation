@@ -5,6 +5,10 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -17,6 +21,7 @@ find_package(ament_cmake REQUIRED)
 # ---------------------------------------------------------------------------
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(octomap REQUIRED)
 find_package(as2_3d_map_interface REQUIRED)
 find_package(as2_3d_map_server_plugin REQUIRED)
 
@@ -75,8 +80,25 @@ target_include_directories(test_minimum_snap PRIVATE
 
 target_link_libraries(test_minimum_snap Eigen3::Eigen)
 
+# --- test_jps3d_real_map (temporary profiling harness) ---
+add_executable(test_jps3d_real_map
+  scripts/test_jps3d_real_map.cpp
+  ${PLANNER_PKG_DIR}/src/jps3d_planner.cpp
+  ${JPS3D_DIR}/src/jps_planner/graph_search.cpp
+  ${JPS3D_DIR}/src/jps_planner/jps_planner.cpp
+)
+
+target_include_directories(test_jps3d_real_map PRIVATE
+  ${PLANNER_PKG_DIR}/include
+  ${MAP_IF_PKG_DIR}/include
+  ${JPS3D_DIR}/include
+  ${OCTOMAP_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_jps3d_real_map Eigen3::Eigen ${OCTOMAP_LIBRARIES})
+
 install(
-  TARGETS test_astar_artificial test_jps3d_artificial test_minimum_snap
+  TARGETS test_astar_artificial test_jps3d_artificial test_minimum_snap test_jps3d_real_map
   DESTINATION lib/${PROJECT_NAME}
 )
 

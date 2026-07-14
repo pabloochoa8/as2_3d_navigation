@@ -10,7 +10,7 @@
     planner.use_jps3d: true       # true = JPS3D primary + A* fallback; false = A* only
 
     # JPS3D tuning
-    jps.inflation_radius: 0.50    # safety margin around obstacles [m]
+    jps.inflation_radius: 0.30    # safety margin around obstacles [m]
     jps.map_update_rate:  0       # rebuild collision map every N plan() calls
 
     # Minimum-Snap trajectory smoothing
@@ -23,6 +23,6 @@
 
     # A* tuning (used as fallback when JPS3D is enabled, primary when disabled)
     astar.max_iterations: 500000
-    astar.inflation_radius: 0.50
+    astar.inflation_radius: 0.30
     astar.allow_diagonal: true
     astar.w_heuristic: 1.0
