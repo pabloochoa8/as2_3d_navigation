@@ -69,6 +69,13 @@ def generate_launch_description() -> LaunchDescription:
             'config_file',
             default_value=default_config,
             description='Full path to the YAML parameters file'),
+        DeclareLaunchArgument(
+            'map_file',
+            default_value=os.path.join(
+                os.path.expanduser('~'),
+                'project_IMAV26', 'launchers', 'simulation', 'maps',
+                'arena_map_BUENA2.bt'),
+            description='Full path to the .bt OctoMap file'),
     ]
 
     node = Node(
@@ -84,6 +91,7 @@ def generate_launch_description() -> LaunchDescription:
                 'plugin_name': 'as2_3d_path_planner',
             },
             LaunchConfiguration('config_file'),
+            {'map_file': LaunchConfiguration('map_file')},
         ],
     )
 
