@@ -193,12 +193,17 @@ void Plugin::pointcloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr 
     msg->header.stamp.sec,
     msg->header.stamp.nanosec);
 
+  // Gazebo/ros_gz_bridge can prefix TF-invalid frame_ids with '/' (ROS1-style);
+  // tf2 in ROS 2 rejects leading slashes. Strip it defensively.
+  std::string cloud_frame = msg->header.frame_id;
+  if (!cloud_frame.empty() && cloud_frame.front() == '/') { cloud_frame.erase(0, 1); }
+
   // 1. Look up transform: map_frame ← cloud frame
   geometry_msgs::msg::TransformStamped tf_stamped;
   try {
     tf_stamped = tf_buffer_->lookupTransform(
       map_frame_,
-      msg->header.frame_id,
+      cloud_frame,
       tf2::TimePointZero);
   } catch (const tf2::TransformException & e) {
     RCLCPP_WARN_THROTTLE(

@@ -74,7 +74,7 @@ def generate_launch_description() -> LaunchDescription:
             default_value=os.path.join(
                 os.path.expanduser('~'),
                 'project_IMAV26', 'launchers', 'simulation', 'maps',
-                'arena_map_BUENA2.bt'),
+                'arena_map_final.bt'),
             description='Full path to the .bt OctoMap file'),
     ]
 
