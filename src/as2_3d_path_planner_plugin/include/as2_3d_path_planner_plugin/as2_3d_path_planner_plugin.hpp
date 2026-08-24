@@ -39,6 +39,8 @@
 
 #include <memory>
 #include <vector>
+#include <string>
+#include <std_srvs/srv/trigger.hpp>
 
 #include <as2_behaviors_path_planning/path_planner_plugin_base.hpp>
 #include <as2_3d_map_interface/map_interface.hpp>
@@ -89,6 +91,10 @@ private:
   bool snap_enabled_{true};
   int  snap_chunk_size_{8};
   MinimumSnap::Params snap_params_;
+  std::vector<Eigen::Vector3d> mission_waypoints_;
+  std::string mission_waypoints_file_;
+  bool loadMissionWaypoints(const std::string & file_path);
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reload_mission_srv_;
 };
 
 }  // namespace as2_3d_path_planner

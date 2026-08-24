@@ -33,6 +33,8 @@
 #include <cmath>
 #include <Eigen/Core>
 #include <pluginlib/class_list_macros.hpp>
+#include <yaml-cpp/yaml.h>
+#include <fstream>
 
 namespace as2_3d_path_planner
 {
@@ -168,6 +170,43 @@ void Plugin::initialize(
     snap_ = std::make_unique<MinimumSnap>(snap_params_);
   }
 
+  // --- Mission waypoints (optional multi-point route) ---
+  node_ptr_->declare_parameter("mission_waypoints_file", std::string(""));
+  mission_waypoints_file_ = node_ptr_->get_parameter("mission_waypoints_file").as_string();
+  if (!mission_waypoints_file_.empty()) {
+    if (loadMissionWaypoints(mission_waypoints_file_)) {
+      RCLCPP_INFO(node_ptr_->get_logger(),
+        "[path_planner] Loaded mission with %zu waypoints from %s",
+        mission_waypoints_.size(), mission_waypoints_file_.c_str());
+    } else {
+      RCLCPP_WARN(node_ptr_->get_logger(),
+        "[path_planner] Failed to load mission_waypoints_file=%s",
+        mission_waypoints_file_.c_str());
+    }
+  }
+
+  reload_mission_srv_ = node_ptr_->create_service<std_srvs::srv::Trigger>(
+    "~/reload_mission",
+    [this](
+      const std_srvs::srv::Trigger::Request::SharedPtr,
+      std_srvs::srv::Trigger::Response::SharedPtr response)
+    {
+      if (mission_waypoints_file_.empty()) {
+        response->success = false;
+        response->message = "No mission_waypoints_file configured";
+        return;
+      }
+      bool success = loadMissionWaypoints(mission_waypoints_file_);
+      response->success = success;
+      response->message = success ?
+        "Mission reloaded: " + std::to_string(mission_waypoints_.size()) + " waypoints" :
+        "Failed to reload mission from " + mission_waypoints_file_;
+      RCLCPP_INFO(node_ptr_->get_logger(),
+        "[path_planner] %s", response->message.c_str());
+    });
+  RCLCPP_INFO(node_ptr_->get_logger(),
+    "[path_planner] Reload-mission service available at ~/reload_mission");
+
   // --- Load map from file (primary) ---
   node_ptr_->declare_parameter("map_file", "");
   const std::string map_file =
@@ -268,34 +307,44 @@ bool Plugin::on_activate(
 
   // -------------------------------------------------------------------------
   // Step 1: Global path (JPS3D with A* fallback)
-  // -------------------------------------------------------------------------
   std::vector<Eigen::Vector3d> waypoints;
-
-  if (use_jps3d_ && jps_) {
-    waypoints = jps_->plan(start, goal_pos);
-    if (waypoints.empty()) {
-      RCLCPP_WARN(node_ptr_->get_logger(),
-        "[path_planner] JPS3D failed (%s) — falling back to A*",
-        jps3d_result_str(jps_->lastResult()));
-    }
+  std::vector<Eigen::Vector3d> mission_points;
+  if (!mission_waypoints_.empty()) {
+    mission_points = mission_waypoints_;
+  } else {
+    mission_points = {start, goal_pos};
   }
-
-  if (waypoints.empty()) {
-    waypoints = astar_->plan(start, goal_pos);
-    if (waypoints.empty()) {
-      RCLCPP_ERROR(node_ptr_->get_logger(),
-        "[path_planner] A* also failed (%s) — no path",
-        astar_result_str(astar_->lastResult()));
-      return false;
+  bool any_jps3d_used = false;
+  for (size_t seg = 0; seg + 1 < mission_points.size(); ++seg) {
+    const Eigen::Vector3d & seg_start = mission_points[seg];
+    const Eigen::Vector3d & seg_goal  = mission_points[seg + 1];
+    std::vector<Eigen::Vector3d> seg_waypoints;
+    if (use_jps3d_ && jps_) {
+      seg_waypoints = jps_->plan(seg_start, seg_goal);
+      if (!seg_waypoints.empty()) {any_jps3d_used = true;}
+      if (seg_waypoints.empty()) {
+        RCLCPP_WARN(node_ptr_->get_logger(),
+          "[path_planner] JPS3D failed on segment %zu (%s) — falling back to A*",
+          seg, jps3d_result_str(jps_->lastResult()));
+      }
     }
+    if (seg_waypoints.empty()) {
+      seg_waypoints = astar_->plan(seg_start, seg_goal);
+      if (seg_waypoints.empty()) {
+        RCLCPP_ERROR(node_ptr_->get_logger(),
+          "[path_planner] A* also failed on segment %zu (%s) — aborting mission",
+          seg, astar_result_str(astar_->lastResult()));
+        return false;
+      }
+    }
+    const size_t skip = (seg == 0) ? 0u : 1u;
+    waypoints.insert(waypoints.end(), seg_waypoints.begin() + skip, seg_waypoints.end());
   }
-
-  const std::string planner_used =
-    (use_jps3d_ && jps_ && jps_->lastResult() == Jps3DPlanner::Result::SUCCESS)
-    ? "JPS3D" : "A*";
-
+  const std::string planner_used = any_jps3d_used ? "JPS3D" : "A*";
   RCLCPP_INFO(node_ptr_->get_logger(),
-    "[path_planner] %s: %zu discrete waypoints", planner_used.c_str(), waypoints.size());
+    "[path_planner] %s: %zu discrete waypoints (%zu mission segments)",
+    planner_used.c_str(), waypoints.size(), mission_points.size() - 1);
+  // -------------------------------------------------------------------------
 
   // -------------------------------------------------------------------------
   // Step 2: Chunked Minimum-Snap + per-chunk collision check
@@ -414,6 +463,39 @@ bool Plugin::is_path_traversable(
   return true;
 }
 
+
+bool Plugin::loadMissionWaypoints(const std::string & file_path)
+{
+  try {
+    YAML::Node yaml_root = YAML::LoadFile(file_path);
+    if (!yaml_root["mission_waypoints"]) {
+      RCLCPP_ERROR(node_ptr_->get_logger(),
+        "[path_planner] YAML file %s has no 'mission_waypoints' key", file_path.c_str());
+      return false;
+    }
+    mission_waypoints_.clear();
+    for (const auto & wp : yaml_root["mission_waypoints"]) {
+      const double x = wp["x"].as<double>();
+      const double y = wp["y"].as<double>();
+      const double z = wp["z"].as<double>();
+      mission_waypoints_.emplace_back(x, y, z);
+    }
+    if (mission_waypoints_.size() < 2) {
+      RCLCPP_ERROR(node_ptr_->get_logger(),
+        "[path_planner] mission_waypoints_file must contain at least 2 points, got %zu",
+        mission_waypoints_.size());
+      mission_waypoints_.clear();
+      return false;
+    }
+    return true;
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(node_ptr_->get_logger(),
+      "[path_planner] Failed to parse mission_waypoints_file %s: %s",
+      file_path.c_str(), e.what());
+    mission_waypoints_.clear();
+    return false;
+  }
+}
 }  // namespace as2_3d_path_planner
 
 PLUGINLIB_EXPORT_CLASS(as2_3d_path_planner::Plugin, as2_behaviors_path_planning::PluginBase)

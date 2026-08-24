@@ -20,6 +20,7 @@ set(PROJECT_DEPENDENCIES
   as2_behavior
   as2_behaviors_path_planning
   geometry_msgs
+  std_srvs
   nav_msgs
   visualization_msgs
   tf2_ros
@@ -33,6 +34,7 @@ endforeach()
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(octomap REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # ---------------------------------------------------------------------------
 # JPS3D (vendored from https://github.com/KumarRobotics/jps3d, commit master)
@@ -64,6 +66,7 @@ target_link_libraries(${PROJECT_NAME}
   as2_3d_map_interface::as2_3d_map_interface
   Eigen3::Eigen
   ${OCTOMAP_LIBRARIES}
+  yaml-cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

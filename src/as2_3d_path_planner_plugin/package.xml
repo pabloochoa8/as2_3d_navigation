@@ -19,6 +19,7 @@
   <depend>as2_behavior</depend>
   <depend>as2_behaviors_path_planning</depend>
   <depend>geometry_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>nav_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>tf2_ros</depend>
