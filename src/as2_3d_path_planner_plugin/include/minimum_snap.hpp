@@ -84,7 +84,17 @@ public:
    *         (from t=0 to t=totalTime(), inclusive).  Empty on failure.
    */
   std::vector<Eigen::Vector3d> generate(
-    const std::vector<Eigen::Vector3d> & waypoints);
+    const std::vector<Eigen::Vector3d> & waypoints,
+    const Eigen::Vector3d & start_vel = Eigen::Vector3d::Zero(),
+    const Eigen::Vector3d & end_vel = Eigen::Vector3d::Zero());
+
+  /**
+   * @brief Velocity at the end of the last generated trajectory (t=totalTime()).
+   *
+   * Must be called after a successful generate(). Used to propagate velocity
+   * continuity into the next chunk when chaining chunked segments.
+   */
+  Eigen::Vector3d finalVelocity() const;
 
   /**
    * @brief Evaluate the trajectory at global time t ∈ [0, totalTime()].
@@ -109,6 +119,9 @@ private:
 
   /// Polynomial coefficients per axis:  coefs_[axis] has length 8*n_segs_
   std::array<Eigen::VectorXd, 3> coefs_;
+
+  /// Velocity at t=totalTime() of the last generated trajectory.
+  Eigen::Vector3d final_vel_{Eigen::Vector3d::Zero()};
 };
 
 #endif  // MINIMUM_SNAP_HPP_

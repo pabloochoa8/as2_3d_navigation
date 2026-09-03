@@ -357,18 +357,21 @@ bool Plugin::on_activate(
     int chunk_idx = 0;
     int smooth_chunks = 0;
     int discrete_chunks = 0;
+    Eigen::Vector3d chunk_start_vel = Eigen::Vector3d::Zero();
 
     for (int chunk_start = 0; chunk_start < n_wp - 1; ) {
       const int chunk_end = std::min(chunk_start + snap_chunk_size_ - 1, n_wp - 1);
+      const bool is_last_chunk = (chunk_end >= n_wp - 1);
 
       const std::vector<Eigen::Vector3d> chunk_wps(
         waypoints.cbegin() + chunk_start,
         waypoints.cbegin() + chunk_end + 1);
 
       bool use_discrete = false;
+      const Eigen::Vector3d end_vel_request = is_last_chunk ? Eigen::Vector3d::Zero() : chunk_start_vel;
 
       if (chunk_wps.size() >= 2) {
-        const auto sampled = snap_->generate(chunk_wps);
+        const auto sampled = snap_->generate(chunk_wps, chunk_start_vel, end_vel_request);
 
         if (sampled.size() < 2) {
           use_discrete = true;
@@ -385,6 +388,7 @@ bool Plugin::on_activate(
               final_pts.push_back(sampled[i]);
             }
             ++smooth_chunks;
+            chunk_start_vel = snap_->finalVelocity();
           } else {
             RCLCPP_WARN(node_ptr_->get_logger(),
               "[path_planner] chunk %d UNSAFE at sample %d (%.2f, %.2f, %.2f) "
@@ -404,6 +408,7 @@ bool Plugin::on_activate(
           final_pts.push_back(chunk_wps[i]);
         }
         ++discrete_chunks;
+        chunk_start_vel = Eigen::Vector3d::Zero();
       }
 
       first_chunk = false;

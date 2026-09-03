@@ -88,6 +88,7 @@ add_executable(test_jps3d_real_map
   ${JPS3D_DIR}/src/jps_planner/jps_planner.cpp
 )
 
+
 target_include_directories(test_jps3d_real_map PRIVATE
   ${PLANNER_PKG_DIR}/include
   ${MAP_IF_PKG_DIR}/include
@@ -97,8 +98,63 @@ target_include_directories(test_jps3d_real_map PRIVATE
 
 target_link_libraries(test_jps3d_real_map Eigen3::Eigen ${OCTOMAP_LIBRARIES})
 
+# --- benchmark_planners (comparative A* vs JPS3D benchmark) ---
+add_executable(benchmark_planners
+  scripts/benchmark_planners.cpp
+  ${PLANNER_PKG_DIR}/src/jps3d_planner.cpp
+  ${PLANNER_PKG_DIR}/src/astar3d.cpp
+  ${JPS3D_DIR}/src/jps_planner/graph_search.cpp
+  ${JPS3D_DIR}/src/jps_planner/jps_planner.cpp
+)
+
+target_include_directories(benchmark_planners PRIVATE
+  ${PLANNER_PKG_DIR}/include
+  ${MAP_IF_PKG_DIR}/include
+  ${JPS3D_DIR}/include
+  ${OCTOMAP_INCLUDE_DIRS}
+)
+
+target_link_libraries(benchmark_planners Eigen3::Eigen ${OCTOMAP_LIBRARIES})
+
+# --- benchmark_mission_segments (real waypoints, consecutive + shuffled) ---
+add_executable(benchmark_mission_segments
+  scripts/benchmark_mission_segments.cpp
+  ${PLANNER_PKG_DIR}/src/jps3d_planner.cpp
+  ${PLANNER_PKG_DIR}/src/astar3d.cpp
+  ${JPS3D_DIR}/src/jps_planner/graph_search.cpp
+  ${JPS3D_DIR}/src/jps_planner/jps_planner.cpp
+)
+
+target_include_directories(benchmark_mission_segments PRIVATE
+  ${PLANNER_PKG_DIR}/include
+  ${MAP_IF_PKG_DIR}/include
+  ${JPS3D_DIR}/include
+  ${OCTOMAP_INCLUDE_DIRS}
+)
+
+target_link_libraries(benchmark_mission_segments Eigen3::Eigen ${OCTOMAP_LIBRARIES})
+
+# --- benchmark_chunk_size (chunk_size sweep on real mission) ---
+add_executable(benchmark_chunk_size
+  scripts/benchmark_chunk_size.cpp
+  ${PLANNER_PKG_DIR}/src/jps3d_planner.cpp
+  ${PLANNER_PKG_DIR}/src/astar3d.cpp
+  ${PLANNER_PKG_DIR}/src/minimum_snap.cpp
+  ${JPS3D_DIR}/src/jps_planner/graph_search.cpp
+  ${JPS3D_DIR}/src/jps_planner/jps_planner.cpp
+)
+
+target_include_directories(benchmark_chunk_size PRIVATE
+  ${PLANNER_PKG_DIR}/include
+  ${MAP_IF_PKG_DIR}/include
+  ${JPS3D_DIR}/include
+  ${OCTOMAP_INCLUDE_DIRS}
+)
+
+target_link_libraries(benchmark_chunk_size Eigen3::Eigen ${OCTOMAP_LIBRARIES})
+
 install(
-  TARGETS test_astar_artificial test_jps3d_artificial test_minimum_snap test_jps3d_real_map
+  TARGETS test_astar_artificial test_jps3d_artificial test_minimum_snap test_jps3d_real_map benchmark_planners benchmark_mission_segments benchmark_chunk_size
   DESTINATION lib/${PROJECT_NAME}
 )
 

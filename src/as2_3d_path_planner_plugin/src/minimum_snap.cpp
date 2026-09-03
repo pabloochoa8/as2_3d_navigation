@@ -46,8 +46,12 @@ MinimumSnap::MinimumSnap(const Params & params)
 
 double MinimumSnap::totalTime() const {return total_time_;}
 
+Eigen::Vector3d MinimumSnap::finalVelocity() const {return final_vel_;}
+
 std::vector<Eigen::Vector3d> MinimumSnap::generate(
-  const std::vector<Eigen::Vector3d> & waypoints)
+  const std::vector<Eigen::Vector3d> & waypoints,
+  const Eigen::Vector3d & start_vel,
+  const Eigen::Vector3d & end_vel)
 {
   // Remove consecutive duplicates to avoid zero-length segments.
   std::vector<Eigen::Vector3d> wps;
@@ -156,24 +160,25 @@ std::vector<Eigen::Vector3d> MinimumSnap::generate(
     int r = 0;
 
     // Start
-    b(r++) = wps[0](axis);  // position = w0
-    // vel=acc=jerk=0 → b stays 0 for rows 1..3
-
-    r += 3;  // skip the 3 zero constraints
+    b(r++) = wps[0](axis);      // position = w0
+    b(r++) = start_vel(axis);   // velocity at t=0 (0 unless chained from a previous chunk)
+    r += 2;  // acc=jerk=0 -> b stays 0 for these 2 rows
 
     // Junctions
     for (int j = 1; j < n_segs_; ++j) {
       b(r++) = wps[j](axis);  // right end = w_j
       b(r++) = wps[j](axis);  // left end  = w_j
-      r += 6;                 // continuity rows → 0 (already zero)
+      r += 6;                 // continuity rows -> 0 (already zero)
     }
 
     // End
     b(r++) = wps[n_segs_](axis);  // position = wN
-    // vel=acc=jerk=0 → b stays 0 for remaining rows
+    b(r++) = end_vel(axis);       // velocity at t=T (0 unless propagated to next chunk)
+    // acc=jerk=0 -> b stays 0 for remaining rows
 
     coefs_[axis] = decomp.solve(b);
   }
+  final_vel_ = end_vel;
 
   // --- Sample ---
   std::vector<Eigen::Vector3d> out;
