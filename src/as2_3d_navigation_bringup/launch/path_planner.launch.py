@@ -66,6 +66,10 @@ def generate_launch_description() -> LaunchDescription:
             default_value='info',
             description='ROS 2 log level'),
         DeclareLaunchArgument(
+            'pose_topic',
+            default_value='/drone0/local_est/imu_test',
+            description='Pose topic used by the path planner'),
+        DeclareLaunchArgument(
             'config_file',
             default_value=default_config,
             description='Full path to the YAML parameters file'),
@@ -92,6 +96,10 @@ def generate_launch_description() -> LaunchDescription:
             },
             LaunchConfiguration('config_file'),
             {'map_file': LaunchConfiguration('map_file')},
+        ],
+        remappings=[
+            ('/drone0/self_localization/pose',
+             LaunchConfiguration('pose_topic')),
         ],
     )
 
