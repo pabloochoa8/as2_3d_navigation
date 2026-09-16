@@ -247,9 +247,13 @@ void Plugin::pointcloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr 
       continue;
     }
 
-    // Distance filter (> 5 m from sensor origin in local frame)
+    // Distance filter: reject unreliable measurements too close to
+    // or too far from the sensor origin.
     const float dist2 = lx * lx + ly * ly + lz * lz;
-    if (dist2 > 25.0f) {
+    if (dist2 < 0.0625f) {  // < 0.25 m
+      continue;
+    }
+    if (dist2 > 16.0f) {    // > 4.00 m
       continue;
     }
 
