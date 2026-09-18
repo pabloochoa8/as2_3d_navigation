@@ -67,7 +67,7 @@ def generate_launch_description() -> LaunchDescription:
             description='ROS 2 log level'),
         DeclareLaunchArgument(
             'pose_topic',
-            default_value='/drone0/local_est/imu_test',
+            default_value='/drone0/self_localization/pose',
             description='Pose topic used by the path planner'),
         DeclareLaunchArgument(
             'config_file',
@@ -77,8 +77,8 @@ def generate_launch_description() -> LaunchDescription:
             'map_file',
             default_value=os.path.join(
                 os.path.expanduser('~'),
-                'project_IMAV26', 'launchers', 'simulation', 'maps',
-                'arena_map_final.bt'),
+                'project_IMAV26', 'launchers', 'real', 'maps',
+                'CAR_ARENA.bt'),
             description='Full path to the .bt OctoMap file'),
     ]
 

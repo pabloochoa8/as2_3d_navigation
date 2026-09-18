@@ -4,7 +4,7 @@
 /*/path_planner:
   ros__parameters:
     # OctoMap to load at startup (binary .bt format).
-    map_file: "/home/pabloochoa/Desktop/TFM/map/arena_map_BUENA2.bt"
+    map_file: "/home/imav26/project_IMAV26/launchers/real/maps/CAR_ARENA.bt"
 
     # Planner selection
     planner.use_jps3d: true       # true = JPS3D primary + A* fallback; false = A* only

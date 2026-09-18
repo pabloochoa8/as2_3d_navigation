@@ -310,7 +310,14 @@ bool Plugin::on_activate(
   std::vector<Eigen::Vector3d> waypoints;
   std::vector<Eigen::Vector3d> mission_points;
   if (!mission_waypoints_.empty()) {
-    mission_points = mission_waypoints_;
+    // Start the mission from the current estimated drone pose.
+    // This makes the first planning segment:
+    // localization pose -> mission_waypoints_[0].
+    mission_points.push_back(start);
+    mission_points.insert(
+      mission_points.end(),
+      mission_waypoints_.begin(),
+      mission_waypoints_.end());
   } else {
     mission_points = {start, goal_pos};
   }
