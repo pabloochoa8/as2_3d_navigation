@@ -59,15 +59,43 @@ void Plugin::initialize(
   node_ptr_->declare_parameter("resolution", 0.05);
   node_ptr_->declare_parameter("map_file", "");
 
+  node_ptr_->declare_parameter("pointcloud.min_range", 0.0);
+  node_ptr_->declare_parameter("pointcloud.max_range", 2.0);
+
+  node_ptr_->declare_parameter("sensor_model.prob_hit", 0.55);
+  node_ptr_->declare_parameter("sensor_model.prob_miss", 0.40);
+  node_ptr_->declare_parameter("sensor_model.occupancy_threshold", 0.90);
+  node_ptr_->declare_parameter("sensor_model.clamping_threshold_max", 0.99);
+
   pointcloud_topic_ =
     node_ptr_->get_parameter("pointcloud_topic").as_string();
   map_frame_ = node_ptr_->get_parameter("map_frame").as_string();
   resolution_ = node_ptr_->get_parameter("resolution").as_double();
+
+  pointcloud_min_range_ =
+    node_ptr_->get_parameter("pointcloud.min_range").as_double();
+  pointcloud_max_range_ =
+    node_ptr_->get_parameter("pointcloud.max_range").as_double();
+
+  const double prob_hit =
+    node_ptr_->get_parameter("sensor_model.prob_hit").as_double();
+  const double prob_miss =
+    node_ptr_->get_parameter("sensor_model.prob_miss").as_double();
+  const double occupancy_threshold =
+    node_ptr_->get_parameter("sensor_model.occupancy_threshold").as_double();
+  const double clamping_threshold_max =
+    node_ptr_->get_parameter("sensor_model.clamping_threshold_max").as_double();
+
   const std::string map_file =
     node_ptr_->get_parameter("map_file").as_string();
 
   // Create OctoMap backend
-  octomap_map_ = std::make_shared<OctomapMap>(resolution_);
+  octomap_map_ = std::make_shared<OctomapMap>(
+    resolution_,
+    prob_hit,
+    prob_miss,
+    occupancy_threshold,
+    clamping_threshold_max);
 
   // Local reactive layer (4×4×2.5 m window, 3 cm resolution)
   local_grid_ = std::make_shared<LocalGrid>(4.0, 4.0, 2.5, 0.03);
@@ -110,7 +138,7 @@ void Plugin::initialize(
     std::bind(&Plugin::pointcloud_callback, this, std::placeholders::_1));
 
   // Save-map service
-  node_ptr_->declare_parameter("map_save_path", "/tmp/arena_map.bt");
+  node_ptr_->declare_parameter("map_save_path", "new_mapping.bt");
   map_save_path_ = node_ptr_->get_parameter("map_save_path").as_string();
 
   save_map_srv_ = node_ptr_->create_service<std_srvs::srv::Trigger>(
@@ -247,24 +275,18 @@ void Plugin::pointcloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr 
       continue;
     }
 
-    // Distance filter: reject unreliable measurements too close to
-    // or too far from the sensor origin.
+    // Distance filter in the sensor frame.
     const float dist2 = lx * lx + ly * ly + lz * lz;
-    if (dist2 < 0.0625f) {  // < 0.25 m
-      continue;
-    }
-    if (dist2 > 16.0f) {    // > 4.00 m
+    const double min_range2 = pointcloud_min_range_ * pointcloud_min_range_;
+    const double max_range2 = pointcloud_max_range_ * pointcloud_max_range_;
+
+    if (dist2 < min_range2 || dist2 > max_range2) {
       continue;
     }
 
     // Transform to map frame
     const Eigen::Vector3d p_earth =
       R * Eigen::Vector3d(lx, ly, lz) + sensor_origin;
-
-    // Discard points below ground
-    if (p_earth.z() < 0.0) {
-      continue;
-    }
 
     points.push_back(p_earth);
   }

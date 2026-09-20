@@ -33,10 +33,20 @@
 namespace as2_3d_map_server
 {
 
-OctomapMap::OctomapMap(double resolution)
+OctomapMap::OctomapMap(
+  double resolution,
+  double prob_hit,
+  double prob_miss,
+  double occupancy_threshold,
+  double clamping_threshold_max)
 : resolution_(resolution)
 {
   octree_ = std::make_shared<octomap::OcTree>(resolution_);
+
+  octree_->setProbHit(prob_hit);
+  octree_->setProbMiss(prob_miss);
+  octree_->setOccupancyThres(occupancy_threshold);
+  octree_->setClampingThresMax(clamping_threshold_max);
 }
 
 // ---------------------------------------------------------------------------

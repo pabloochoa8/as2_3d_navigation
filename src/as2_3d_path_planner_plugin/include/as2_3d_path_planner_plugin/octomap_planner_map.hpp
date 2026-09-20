@@ -60,16 +60,21 @@ namespace as2_3d_path_planner
 class OctomapPlannerMap : public as2_3d_map_interface::MapInterface
 {
 public:
-  // Padding added to the OcToMap metric bounds on each side [m].
-  static constexpr double kBoundsPadding = 1.0;
-
-  // Voxels at z < kFloorClearance are returned as UNKNOWN, not OCCUPIED.
-  // This prevents the mapped floor plane (z≈0) from blocking the inflation
-  // sphere of a drone flying close to the ground.
-  static constexpr double kFloorClearance = 0.15;
-
-  OctomapPlannerMap()
-  : octree_(std::make_unique<octomap::OcTree>(0.05))
+  /**
+   * @brief Construct the planner map.
+   *
+   * @param bounds_padding Extra planning domain around OctoMap bounds [m].
+   * @param floor_clearance Voxels below this z are treated as UNKNOWN [m].
+   * @param min_z Minimum z allowed in the planning domain [m].
+   */
+  explicit OctomapPlannerMap(
+    double bounds_padding = 0.0,
+    double floor_clearance = 0.15,
+    double min_z = 0.0)
+  : bounds_padding_(bounds_padding),
+    floor_clearance_(floor_clearance),
+    min_z_(min_z),
+    octree_(std::make_unique<octomap::OcTree>(0.05))
   {}
 
   /**
@@ -97,12 +102,12 @@ public:
     octomap_bounds_.z_max = zmax;
 
     // Padded bounds: the A* planning domain is larger than the observed area
-    padded_bounds_.x_min = xmin - kBoundsPadding;
-    padded_bounds_.x_max = xmax + kBoundsPadding;
-    padded_bounds_.y_min = ymin - kBoundsPadding;
-    padded_bounds_.y_max = ymax + kBoundsPadding;
-    padded_bounds_.z_min = 0.0;                    // floor is always at 0
-    padded_bounds_.z_max = zmax + kBoundsPadding;
+    padded_bounds_.x_min = xmin - bounds_padding_;
+    padded_bounds_.x_max = xmax + bounds_padding_;
+    padded_bounds_.y_min = ymin - bounds_padding_;
+    padded_bounds_.y_max = ymax + bounds_padding_;
+    padded_bounds_.z_min = min_z_;
+    padded_bounds_.z_max = zmax + bounds_padding_;
 
     loaded_ = true;
     return true;
@@ -138,7 +143,7 @@ public:
     }
     // Floor plane voxels block the inflation sphere for near-ground starts.
     // Treat them as UNKNOWN so the drone can plan at any altitude >= padded z_min.
-    if (z < kFloorClearance) {
+    if (z < floor_clearance_) {
       return as2_3d_map_interface::VoxelState::UNKNOWN;
     }
     const octomap::OcTreeNode * node = octree_->search(x, y, z);
@@ -175,6 +180,10 @@ public:
   }
 
 private:
+  double bounds_padding_{0.0};
+  double floor_clearance_{0.15};
+  double min_z_{0.0};
+
   bool isInPaddedBounds(double x, double y, double z) const
   {
     return x >= padded_bounds_.x_min && x <= padded_bounds_.x_max &&

@@ -209,11 +209,25 @@ void Plugin::initialize(
 
   // --- Load map from file (primary) ---
   node_ptr_->declare_parameter("map_file", "");
+  node_ptr_->declare_parameter("map.bounds_padding", 0.0);
+  node_ptr_->declare_parameter("map.floor_clearance", 0.15);
+  node_ptr_->declare_parameter("map.min_z", 0.0);
+
   const std::string map_file =
     node_ptr_->get_parameter("map_file").as_string();
 
+  const double map_bounds_padding =
+    node_ptr_->get_parameter("map.bounds_padding").as_double();
+  const double map_floor_clearance =
+    node_ptr_->get_parameter("map.floor_clearance").as_double();
+  const double map_min_z =
+    node_ptr_->get_parameter("map.min_z").as_double();
+
   if (!map_file.empty()) {
-    auto octomap = std::make_shared<OctomapPlannerMap>();
+    auto octomap = std::make_shared<OctomapPlannerMap>(
+      map_bounds_padding,
+      map_floor_clearance,
+      map_min_z);
     if (octomap->loadFromFile(map_file)) {
       map_interface_ = octomap;
       const auto b = map_interface_->getBounds();

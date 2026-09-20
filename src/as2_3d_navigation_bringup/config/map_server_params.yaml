@@ -1,14 +1,22 @@
-# Parameters for as2_3d_map_server_plugin loaded inside PathPlannerBehavior.
-# The node name matches the AS2 behavior that loads the plugin.
-
 /*/path_planner:
   ros__parameters:
-    pointcloud_topic: "/drone0/sensor_measurements/front_camera/points"
+    pointcloud_topic: "/camera/camera/depth/color/points"
+
     map_frame: "earth"
     resolution: 0.05
-    sensor_model/hit: 0.501
-    sensor_model/miss: 0.499
-    occupancy_min_z: 0.2
-    map_file: "/home/pabloochoa/Desktop/TFM/map/arena_map_BUENA2.bt"
-    map_save_path: "/home/pabloochoa/Desktop/TFM/map/arena_map_BUENA2.bt"
+
+    pointcloud.min_range: 0.0
+    pointcloud.max_range: 2.0
+
+    sensor_model.prob_hit: 0.55
+    sensor_model.prob_miss: 0.40
+    sensor_model.occupancy_threshold: 0.90
+    sensor_model.clamping_threshold_max: 0.99
+
+    # Start from an empty map by default.
+    map_file: ""
+
+    # Generic fallback output path.
+    map_save_path: "new_mapping.bt"
+
     pose_topic: "/drone0/self_localization/pose"

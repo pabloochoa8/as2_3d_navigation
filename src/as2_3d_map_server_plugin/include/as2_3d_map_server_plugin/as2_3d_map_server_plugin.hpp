@@ -99,6 +99,9 @@ private:
   std::string map_save_path_;
   double resolution_{0.05};
 
+  double pointcloud_min_range_{0.0};
+  double pointcloud_max_range_{2.0};
+
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr save_map_srv_;
   rclcpp::Publisher<octomap_msgs::msg::Octomap>::SharedPtr octomap_pub_;
   rclcpp::TimerBase::SharedPtr octomap_pub_timer_;

@@ -1,27 +1,26 @@
-# Parameters for as2_3d_path_planner_plugin loaded inside PathPlannerBehavior.
-# Node name in AS2: path_planner.
-
 /*/path_planner:
   ros__parameters:
-    # OctoMap to load at startup (binary .bt format).
-    map_file: "/home/imav26/project_IMAV26/launchers/real/maps/CAR_ARENA.bt"
+    # No competition map is defined in the package defaults.
+    # Real deployments use launchers/real/config/path_planner_params.yaml.
+    map_file: ""
 
-    # Planner selection
-    planner.use_jps3d: true       # true = JPS3D primary + A* fallback; false = A* only
+    # Planning domain
+    map.bounds_padding: 0.0
+    map.min_z: 0.0
+    map.floor_clearance: 0.15
 
-    # JPS3D tuning
-    jps.inflation_radius: 0.30    # safety margin around obstacles [m]
-    jps.map_update_rate:  0       # rebuild collision map every N plan() calls
+    planner.use_jps3d: true
 
-    # Minimum-Snap trajectory smoothing
-    snap.enabled:    true
-    snap.total_time: 6.0    # desired total duration [s]
-    snap.sample_dt:  0.15   # sampling step [s]
-    snap.chunk_size: 8      # waypoints per Minimum-Snap segment
-    snap.max_vel:    1.5    # [m/s]
-    snap.max_acc:    2.0    # [m/s²]
+    jps.inflation_radius: 0.30
+    jps.map_update_rate: 0
 
-    # A* tuning (used as fallback when JPS3D is enabled, primary when disabled)
+    snap.enabled: true
+    snap.total_time: 6.0
+    snap.sample_dt: 0.15
+    snap.chunk_size: 4
+    snap.max_vel: 1.5
+    snap.max_acc: 2.0
+
     astar.max_iterations: 500000
     astar.inflation_radius: 0.30
     astar.allow_diagonal: true

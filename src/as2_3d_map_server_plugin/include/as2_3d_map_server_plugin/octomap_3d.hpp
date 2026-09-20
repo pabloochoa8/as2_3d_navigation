@@ -54,7 +54,12 @@ namespace as2_3d_map_server
 class OctomapMap : public as2_3d_map_interface::MapInterface
 {
 public:
-  explicit OctomapMap(double resolution = 0.05);
+  explicit OctomapMap(
+    double resolution = 0.05,
+    double prob_hit = 0.55,
+    double prob_miss = 0.40,
+    double occupancy_threshold = 0.90,
+    double clamping_threshold_max = 0.99);
   ~OctomapMap() override = default;
 
   // ---------- MapInterface ----------
