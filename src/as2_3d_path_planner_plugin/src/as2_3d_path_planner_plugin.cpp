@@ -26,6 +26,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+#include <limits>
 #include "as2_3d_path_planner_plugin/as2_3d_path_planner_plugin.hpp"
 #include "as2_3d_path_planner_plugin/map_registry.hpp"
 #include "as2_3d_path_planner_plugin/octomap_planner_map.hpp"
@@ -211,7 +212,12 @@ void Plugin::initialize(
   node_ptr_->declare_parameter("map_file", "");
   node_ptr_->declare_parameter("map.bounds_padding", 0.0);
   node_ptr_->declare_parameter("map.floor_clearance", 0.15);
+  node_ptr_->declare_parameter("map.min_x", std::numeric_limits<double>::quiet_NaN());
+  node_ptr_->declare_parameter("map.max_x", std::numeric_limits<double>::quiet_NaN());
+  node_ptr_->declare_parameter("map.min_y", std::numeric_limits<double>::quiet_NaN());
+  node_ptr_->declare_parameter("map.max_y", std::numeric_limits<double>::quiet_NaN());
   node_ptr_->declare_parameter("map.min_z", 0.0);
+  node_ptr_->declare_parameter("map.max_z", std::numeric_limits<double>::quiet_NaN());
 
   const std::string map_file =
     node_ptr_->get_parameter("map_file").as_string();
@@ -220,14 +226,29 @@ void Plugin::initialize(
     node_ptr_->get_parameter("map.bounds_padding").as_double();
   const double map_floor_clearance =
     node_ptr_->get_parameter("map.floor_clearance").as_double();
+  const double map_min_x =
+    node_ptr_->get_parameter("map.min_x").as_double();
+  const double map_max_x =
+    node_ptr_->get_parameter("map.max_x").as_double();
+  const double map_min_y =
+    node_ptr_->get_parameter("map.min_y").as_double();
+  const double map_max_y =
+    node_ptr_->get_parameter("map.max_y").as_double();
   const double map_min_z =
     node_ptr_->get_parameter("map.min_z").as_double();
+  const double map_max_z =
+    node_ptr_->get_parameter("map.max_z").as_double();
 
   if (!map_file.empty()) {
     auto octomap = std::make_shared<OctomapPlannerMap>(
       map_bounds_padding,
       map_floor_clearance,
-      map_min_z);
+      map_min_z,
+      map_min_x,
+      map_max_x,
+      map_min_y,
+      map_max_y,
+      map_max_z);
     if (octomap->loadFromFile(map_file)) {
       map_interface_ = octomap;
       const auto b = map_interface_->getBounds();

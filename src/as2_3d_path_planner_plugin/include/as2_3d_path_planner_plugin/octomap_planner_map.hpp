@@ -48,6 +48,8 @@
 #ifndef AS2_3D_PATH_PLANNER_PLUGIN__OCTOMAP_PLANNER_MAP_HPP_
 #define AS2_3D_PATH_PLANNER_PLUGIN__OCTOMAP_PLANNER_MAP_HPP_
 
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -70,10 +72,20 @@ public:
   explicit OctomapPlannerMap(
     double bounds_padding = 0.0,
     double floor_clearance = 0.15,
-    double min_z = 0.0)
+    double min_z = 0.0,
+    double min_x = std::numeric_limits<double>::quiet_NaN(),
+    double max_x = std::numeric_limits<double>::quiet_NaN(),
+    double min_y = std::numeric_limits<double>::quiet_NaN(),
+    double max_y = std::numeric_limits<double>::quiet_NaN(),
+    double max_z = std::numeric_limits<double>::quiet_NaN())
   : bounds_padding_(bounds_padding),
     floor_clearance_(floor_clearance),
     min_z_(min_z),
+    min_x_(min_x),
+    max_x_(max_x),
+    min_y_(min_y),
+    max_y_(max_y),
+    max_z_(max_z),
     octree_(std::make_unique<octomap::OcTree>(0.05))
   {}
 
@@ -101,13 +113,19 @@ public:
     octomap_bounds_.z_min = zmin;
     octomap_bounds_.z_max = zmax;
 
-    // Padded bounds: the A* planning domain is larger than the observed area
-    padded_bounds_.x_min = xmin - bounds_padding_;
-    padded_bounds_.x_max = xmax + bounds_padding_;
-    padded_bounds_.y_min = ymin - bounds_padding_;
-    padded_bounds_.y_max = ymax + bounds_padding_;
+    // Planning bounds.
+    // Explicit limits override OctoMap-derived bounds when configured.
+    padded_bounds_.x_min =
+      std::isfinite(min_x_) ? min_x_ : xmin - bounds_padding_;
+    padded_bounds_.x_max =
+      std::isfinite(max_x_) ? max_x_ : xmax + bounds_padding_;
+    padded_bounds_.y_min =
+      std::isfinite(min_y_) ? min_y_ : ymin - bounds_padding_;
+    padded_bounds_.y_max =
+      std::isfinite(max_y_) ? max_y_ : ymax + bounds_padding_;
     padded_bounds_.z_min = min_z_;
-    padded_bounds_.z_max = zmax + bounds_padding_;
+    padded_bounds_.z_max =
+      std::isfinite(max_z_) ? max_z_ : zmax + bounds_padding_;
 
     loaded_ = true;
     return true;
@@ -183,6 +201,14 @@ private:
   double bounds_padding_{0.0};
   double floor_clearance_{0.15};
   double min_z_{0.0};
+
+  // Optional hard planning bounds.
+  // NaN means: derive that bound from the loaded OctoMap.
+  double min_x_{std::numeric_limits<double>::quiet_NaN()};
+  double max_x_{std::numeric_limits<double>::quiet_NaN()};
+  double min_y_{std::numeric_limits<double>::quiet_NaN()};
+  double max_y_{std::numeric_limits<double>::quiet_NaN()};
+  double max_z_{std::numeric_limits<double>::quiet_NaN()};
 
   bool isInPaddedBounds(double x, double y, double z) const
   {
